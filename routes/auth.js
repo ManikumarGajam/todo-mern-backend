@@ -32,7 +32,7 @@ router.post('/signup', async (req, res) => {
       text: `Your verification code is ${otp}. It is valid for 10 minutes.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendEmail(mailOptions);
 
     res.json({ message: 'OTP sent to your email. Please verify.' });
   } catch (error) {
