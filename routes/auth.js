@@ -10,9 +10,34 @@ router.post('/signup', async (req, res) => {
   const { email, password } = req.body;
   try {
     let user = await User.findOne({ email });
-    if (user) return res.status(400).json({ message: 'User already exists' });
 
-    // Generate OTP and expiry time
+    if (user) {
+      if (user.isVerified) {
+        return res.status(400).json({ message: 'User already exists and verified' });
+      }
+      // If user exists but NOT verified, regenerate OTP and expiry
+      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      const otpExpire = Date.now() + 10 * 60 * 1000; // 10 mins
+      
+      user.verificationOTP = otp;
+      user.otpExpires = otpExpire;
+      // Optionally update password in case user changed it
+      user.password = await bcrypt.hash(password, 10);
+      await user.save();
+
+      // Send OTP email
+      const mailOptions = {
+        from: '"Task Manager" <manikumargajam@gmail.com>',
+        to: email,
+        subject: 'Verify your email for Task Manager',
+        text: `Your verification code is ${otp}. It is valid for 10 minutes.`,
+      };
+      await sendEmail(mailOptions);
+
+      return res.json({ message: 'OTP resent to your email. Please verify.' });
+    }
+
+    // If user doesn't exist, create new user
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const otpExpire = Date.now() + 10 * 60 * 1000; // 10 mins
 
@@ -26,12 +51,11 @@ router.post('/signup', async (req, res) => {
     await user.save();
 
     const mailOptions = {
-      from:'"Task Manager" <manikumargajam@gmail.com>', // your verified sender email
+      from: '"Task Manager" <manikumargajam@gmail.com>',
       to: email,
       subject: 'Verify your email for Task Manager',
       text: `Your verification code is ${otp}. It is valid for 10 minutes.`,
     };
-
     await sendEmail(mailOptions);
 
     res.json({ message: 'OTP sent to your email. Please verify.' });
