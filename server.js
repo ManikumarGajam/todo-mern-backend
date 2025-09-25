@@ -9,7 +9,8 @@ const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
 const User = require('./models/User');
 const Task = require('./models/Task');
-const transporter = require('./mailer');
+const sendEmail = require('../mailer');
+
 
 const app = express();
 
@@ -41,7 +42,7 @@ cron.schedule('0 8 * * *', async () => {
       };
 
       try {
-        await transporter.sendMail(mailOptions);
+        await sendEmail(mailOptions);
         console.log(`Email sent to ${user.email}`);
       } catch (error) {
         console.error(`Error sending email to ${user.email}:`, error);
