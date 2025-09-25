@@ -1,4 +1,4 @@
-//server.js
+// server.js
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -19,14 +19,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log('MongoDB connected'))
-  .catch(e => console.error('MongoDB connection error:', e));
-
-// Modern async/await version
+// -----------------------------
+// Original node-cron (optional, keeps old behavior if server always on)
 cron.schedule('0 8 * * *', async () => {
   console.log('Running daily notification job...');
   try {
@@ -57,6 +51,50 @@ cron.schedule('0 8 * * *', async () => {
     console.error('Error in daily reminder cron job:', outerErr);
   }
 });
+
+// -----------------------------
+// New API endpoint for external cron (ensures emails run on free hosting)
+app.get('/api/send-daily-emails', async (req, res) => {
+  console.log('Triggered daily notification job via external cron...');
+  try {
+    const users = await User.find({ isVerified: true });
+    for (const user of users) {
+      const tasks = await Task.find({ user: user._id, status: { $ne: 'Completed' } });
+      if (tasks.length === 0) continue;
+
+      const taskList = tasks
+        .map(t => `- ${t.title} (Due: ${t.dueDate ? t.dueDate.toDateString() : 'No due date'})`)
+        .join('\n');
+
+      const mailOptions = {
+        from: '"Task Manager" <manikumargajam@gmail.com>',
+        to: user.email,
+        subject: 'Your Pending Tasks Reminder',
+        text: `Hello,\n\nYou have the following pending tasks:\n${taskList}\n\nPlease check your Todo App.\n`,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent to ${user.email}`);
+      } catch (error) {
+        console.error(`Error sending email to ${user.email}:`, error);
+      }
+    }
+
+    res.send('Daily emails sent successfully!');
+  } catch (err) {
+    console.error('Error in daily emails endpoint:', err);
+    res.status(500).send('Error sending daily emails');
+  }
+});
+
+// Connect MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log('MongoDB connected'))
+  .catch(e => console.error('MongoDB connection error:', e));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
