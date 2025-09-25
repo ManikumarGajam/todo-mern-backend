@@ -9,7 +9,8 @@ const authRoutes = require('./routes/auth');
 const taskRoutes = require('./routes/tasks');
 const User = require('./models/User');
 const Task = require('./models/Task');
-const sendEmail = require('../mailer');
+const sendEmail = require('./mailer'); // Because server.js and mailer.js are both in rootgit add .
+
 
 
 const app = express();
@@ -35,7 +36,7 @@ cron.schedule('0 8 * * *', async () => {
       ).join('\n');
 
       const mailOptions = {
-        from: '"Task Manager" <manikumargajam@gmail.com>',
+        from: '"Task-Manager" <manikumargajam@gmail.com>',
         to: user.email,
         subject: 'Your Pending Tasks Reminder',
         text: `Hello,\n\nYou have the following pending tasks:\n${taskList}\n\nPlease check your Todo App.\n`,
